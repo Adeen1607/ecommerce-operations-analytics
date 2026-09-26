@@ -1,0 +1,62 @@
+Marketplace Revenue :=
+SUM ( fact_orders[product_revenue] )
+
+Orders :=
+DISTINCTCOUNT ( fact_orders[order_id] )
+
+Customers :=
+DISTINCTCOUNT ( fact_orders[customer_unique_id] )
+
+Average Order Value :=
+DIVIDE ( [Marketplace Revenue], [Orders] )
+
+Freight Cost :=
+SUM ( fact_orders[freight_value] )
+
+Freight Share % :=
+DIVIDE ( [Freight Cost], [Marketplace Revenue] )
+
+Average Delivery Days :=
+AVERAGE ( fact_orders[delivery_days] )
+
+On-time Orders :=
+CALCULATE (
+    [Orders],
+    fact_orders[on_time_delivery] = TRUE ()
+)
+
+On-time Delivery Rate :=
+DIVIDE (
+    [On-time Orders],
+    CALCULATE (
+        [Orders],
+        NOT ISBLANK ( fact_orders[on_time_delivery] )
+    )
+)
+
+Late Orders :=
+CALCULATE (
+    [Orders],
+    fact_orders[on_time_delivery] = FALSE ()
+)
+
+Average Review Score :=
+AVERAGE ( fact_orders[review_score] )
+
+Low-score Orders :=
+CALCULATE (
+    [Orders],
+    fact_orders[review_score] <= 2
+)
+
+Low-score Rate :=
+DIVIDE ( [Low-score Orders], [Orders] )
+
+Cancelled Orders :=
+CALCULATE (
+    [Orders],
+    fact_orders[order_status] = "canceled"
+)
+
+Cancellation Rate :=
+DIVIDE ( [Cancelled Orders], [Orders] )
