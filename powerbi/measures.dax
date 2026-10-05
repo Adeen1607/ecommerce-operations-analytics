@@ -37,7 +37,7 @@ DIVIDE (
 Late Orders :=
 CALCULATE (
     [Orders],
-    fact_orders[on_time_delivery] = FALSE ()
+    fact_orders[on_time_delivery] == FALSE ()
 )
 
 Average Review Score :=
@@ -46,11 +46,18 @@ AVERAGE ( fact_orders[review_score] )
 Low-score Orders :=
 CALCULATE (
     [Orders],
+    NOT ISBLANK ( fact_orders[review_score] ),
     fact_orders[review_score] <= 2
 )
 
+Reviewed Orders :=
+CALCULATE (
+    [Orders],
+    NOT ISBLANK ( fact_orders[review_score] )
+)
+
 Low-score Rate :=
-DIVIDE ( [Low-score Orders], [Orders] )
+DIVIDE ( [Low-score Orders], [Reviewed Orders] )
 
 Cancelled Orders :=
 CALCULATE (
