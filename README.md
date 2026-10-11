@@ -48,3 +48,31 @@ pytest
 ## Responsible interpretation
 
 This is a historical marketplace sample. Review scores do not measure every customer experience, seller comparisons require sufficient order volume, and delivery performance varies by geography and product mix. The project separates operational facts from assumptions and avoids causal claims.
+
+
+## Rebuild the reading edition
+
+```bash
+python -m pip install -r requirements-research.txt
+python scripts/build_research_site.py
+```
+
+This renders saved notebook outputs without rerunning model training or external APIs. To refresh findings, run the analysis commands above first, update `reports/research-findings.md`, and rebuild.
+
+<!-- research-edition:start -->
+## Research edition
+
+[Research report and final visual results](research/report.md) · [Browser-ready notebook catalogue](research/notebooks.html)
+
+Fresh execution on 11 October 2026 using publisher Olist tables. The reporting model contains **99,441 order-level records**. Monthly revenue and on-time delivery rates use the exported monthly scorecard. Review-versus-delivery plots are associations within delivered and reviewed records, not evidence of a causal improvement. Customer and seller identifiers are not published in the reading edition.
+
+| Measure | Value |
+|---|---:|
+| order rows | 99441 |
+| monthly buckets | 25 |
+
+
+
+The `research/` folder contains a professional static reading edition. The Pages workflow deploys it after GitHub Pages is enabled with **GitHub Actions** as the publishing source. Intended URL: `https://adeen1607.github.io/ecommerce-operations-analytics/`. Deployment status must be checked in Actions before treating that address as live.
+
+<!-- research-edition:end -->

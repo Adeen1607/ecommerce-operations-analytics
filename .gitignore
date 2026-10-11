@@ -6,3 +6,9 @@ data/raw/
 data/processed/
 artifacts/
 *.pbix
+
+# Local experiment details; only aggregates and charts are published.
+reports/results/*.csv
+reports/results/*.joblib
+__pycache__/
+_site/

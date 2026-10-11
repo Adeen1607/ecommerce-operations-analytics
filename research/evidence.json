@@ -1,0 +1,15 @@
+{
+  "repository": "Adeen1607/ecommerce-operations-analytics",
+  "review_date": "2026-10-11",
+  "evidence_note": "Fresh execution on 11 October 2026 using publisher Olist tables. The reporting model contains **99,441 order-level records**. Monthly revenue and on-time delivery rates use the exported monthly scorecard. Review-versus-delivery plots are associations within delivered and reviewed records, not evidence of a causal improvement. Customer and seller identifiers are not published in the reading edition.\n\n| Measure | Value |\n|---|---:|\n| order rows | 99441 |\n| monthly buckets | 25 |\n\n",
+  "inputs": [
+    {
+      "path": "notebooks/key_visuals.ipynb",
+      "sha256": "5893ee070ad6b894d9baa2602f785a1113971d3bc34bcd31cfd2db1af9a38259"
+    },
+    {
+      "path": "reports/aggregate-summary.csv",
+      "sha256": "1b8d7a23a0617faabb1ff8476e82f251cfe46931021cd53d439817086d24cadc"
+    }
+  ]
+}
