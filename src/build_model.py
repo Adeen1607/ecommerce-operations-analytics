@@ -92,12 +92,14 @@ def build_order_fact(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     fact["delivery_days"] = (
         fact["order_delivered_customer_date"] - fact["order_purchase_timestamp"]
     ).dt.total_seconds() / 86_400
-    fact["delivery_variance_days"] = (
-        fact["order_delivered_customer_date"]
-        - fact["order_estimated_delivery_date"]
-    ).dt.total_seconds() / 86_400
-    fact["on_time_delivery"] = fact["delivery_variance_days"].le(0)
-    fact.loc[fact["order_delivered_customer_date"].isna(), "on_time_delivery"] = pd.NA
+    # Olist promises a calendar date, not delivery at midnight that morning.
+    delivered_date = fact["order_delivered_customer_date"].dt.normalize()
+    promised_date = fact["order_estimated_delivery_date"].dt.normalize()
+    fact["delivery_variance_days"] = (delivered_date - promised_date).dt.days
+    fact["on_time_delivery"] = (
+        fact["delivery_variance_days"].le(0).astype("boolean")
+        .where(delivered_date.notna() & promised_date.notna())
+    )
     fact["freight_share"] = fact["freight_value"] / fact["product_revenue"].where(
         fact["product_revenue"].ne(0)
     )
@@ -131,6 +133,31 @@ def build_item_fact(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return fact
 
 
+def build_seller_scorecard(item_fact: pd.DataFrame) -> pd.DataFrame:
+    """Sum item economics but weight reviews once per seller-order."""
+    seller = (
+        item_fact.groupby(["seller_id", "seller_state"], dropna=False)
+        .agg(
+            orders=("order_id", "nunique"),
+            product_revenue=("price", "sum"),
+            freight_value=("freight_value", "sum"),
+        )
+        .reset_index()
+    )
+    reviews = (
+        item_fact.drop_duplicates(["seller_id", "order_id"])
+        .groupby("seller_id", dropna=False)
+        .agg(
+            average_review_score=("review_score", "mean"),
+            reviewed_orders=("review_score", "count"),
+        )
+        .reset_index()
+    )
+    return seller.merge(reviews, on="seller_id", validate="many_to_one").sort_values(
+        "product_revenue", ascending=False
+    )
+
+
 def build_model(input_dir: Path, output_dir: Path) -> None:
     tables = load_tables(input_dir)
     order_fact = build_order_fact(tables)
@@ -150,17 +177,7 @@ def build_model(input_dir: Path, output_dir: Path) -> None:
         )
         .reset_index()
     )
-    seller = (
-        item_fact.groupby(["seller_id", "seller_state"], dropna=False)
-        .agg(
-            orders=("order_id", "nunique"),
-            product_revenue=("price", "sum"),
-            freight_value=("freight_value", "sum"),
-            average_review_score=("review_score", "mean"),
-        )
-        .reset_index()
-        .sort_values("product_revenue", ascending=False)
-    )
+    seller = build_seller_scorecard(item_fact)
 
     order_fact.to_csv(output_dir / "fact_orders.csv", index=False)
     item_fact.to_csv(output_dir / "fact_order_items.csv", index=False)

@@ -1,7 +1,9 @@
 import pandas as pd
 import pytest
 
-from src.build_model import build_item_fact, build_order_fact
+from src.build_model import (
+    FILES, build_item_fact, build_model, build_order_fact, build_seller_scorecard,
+)
 
 
 def sample_tables() -> dict[str, pd.DataFrame]:
@@ -106,3 +108,74 @@ def test_item_fact_preserves_item_grain_and_enriches_dimensions() -> None:
     assert first_item["product_category_name_english"] == "health_beauty"
     assert first_item["seller_state"] == "SP"
     assert first_item["review_score"] == 5
+
+
+@pytest.mark.parametrize("missing_column", [
+    "order_delivered_customer_date", "order_estimated_delivery_date"
+])
+def test_delivery_with_missing_date_is_unknown(missing_column: str) -> None:
+    tables = sample_tables()
+    tables["orders"].loc[0, missing_column] = None
+    fact = build_order_fact(tables)
+
+    assert str(fact["on_time_delivery"].dtype) == "boolean"
+    assert pd.isna(fact.loc[0, "on_time_delivery"])
+    assert pd.isna(fact.loc[0, "delivery_variance_days"])
+
+
+def test_delivery_any_time_on_promised_date_is_on_time() -> None:
+    tables = sample_tables()
+    tables["orders"].loc[0, "order_delivered_customer_date"] = "2018-01-07 23:59:59"
+    fact = build_order_fact(tables)
+
+    assert fact.loc[0, "delivery_variance_days"] == 0
+    assert bool(fact.loc[0, "on_time_delivery"]) is True
+
+
+def test_seller_reviews_are_weighted_by_order_not_number_of_items() -> None:
+    tables = sample_tables()
+    # One seller has two items in a five-star order and one in a one-star order.
+    tables["items"].loc[1, "seller_id"] = "seller-1"
+    tables["reviews"].loc[1, "review_score"] = 1
+    item_fact = build_item_fact(tables)
+    seller = build_seller_scorecard(item_fact).set_index("seller_id").loc["seller-1"]
+
+    assert seller["orders"] == 2
+    assert seller["product_revenue"] == 230
+    assert seller["freight_value"] == 33
+    assert seller["reviewed_orders"] == 2
+    assert seller["average_review_score"] == 3
+
+
+def test_unreviewed_orders_do_not_lower_seller_review_average() -> None:
+    tables = sample_tables()
+    tables["reviews"] = tables["reviews"].iloc[[0]]
+    seller = build_seller_scorecard(build_item_fact(tables))
+    first = seller.set_index("seller_id").loc["seller-1"]
+
+    assert first["orders"] == 2
+    assert first["reviewed_orders"] == 1
+    assert first["average_review_score"] == 5
+
+
+def test_csv_pipeline_preserves_grain_and_eligible_delivery_rate(tmp_path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    for name, table in sample_tables().items():
+        table.to_csv(raw / FILES[name], index=False)
+    output = tmp_path / "processed"
+
+    build_model(raw, output)
+
+    assert {path.name for path in output.iterdir()} == {
+        "fact_orders.csv", "fact_order_items.csv",
+        "monthly_marketplace_kpis.csv", "seller_scorecard.csv",
+    }
+    orders = pd.read_csv(output / "fact_orders.csv")
+    items = pd.read_csv(output / "fact_order_items.csv")
+    monthly = pd.read_csv(output / "monthly_marketplace_kpis.csv")
+    assert len(orders) == 2
+    assert len(items) == 3
+    assert orders["product_revenue"].sum() == 230
+    assert monthly.loc[0, "on_time_delivery_rate"] == 1
+    assert pd.isna(orders.loc[1, "on_time_delivery"])

@@ -21,22 +21,43 @@ The pipeline combines orders, order items, payments, reviews, customers, product
 - order-level fulfillment and payment metrics;
 - item-level product and seller performance;
 - monthly marketplace KPIs;
-- delivery reliability by state and seller;
-- product-category revenue and review performance;
+- delivery metrics and customer state in the order fact;
+- product-category labels and review scores in the item fact;
 - documented Power BI measures and business rules.
 
 ## Setup
 
 ```bash
-kaggle datasets download -d olistbr/brazilian-ecommerce -p data/raw --unzip
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+# Download and unzip the eight Olist CSV files into data/raw first.
 python src/build_model.py
-pytest
+python -m pytest -q
 ```
 
-## Dashboard pages
+The Kaggle download requires separate CLI installation and account authentication. If you already use the Kaggle CLI, the download command is:
+
+```bash
+kaggle datasets download -d olistbr/brazilian-ecommerce -p data/raw --unzip
+```
+
+On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`. Run commands from the repository root. Tests use small fixtures and do not need Kaggle credentials or downloaded data.
+
+For `notebooks/key_visuals.ipynb`, install `pip install -r requirements-visuals.txt` in your notebook environment after building the reporting tables. Start the notebook with `notebooks/` as its working directory.
+
+## Reporting outputs
+
+| Output | Grain | What to inspect |
+|---|---|---|
+| `fact_orders.csv` | One order | Revenue, payments, review summaries, delivery dates and eligibility |
+| `fact_order_items.csv` | One order item | Product/category and seller dimensions without payment/review join fan-out |
+| `monthly_marketplace_kpis.csv` | One purchase month | Order counts, revenue, reviews and eligible-delivery rate |
+| `seller_scorecard.csv` | One seller and state | Item economics, distinct orders and order-weighted reviews |
+
+Business rules and denominator choices are documented in [KPI definitions](docs/KPI_DEFINITIONS.md). The Power BI file contains DAX definitions; a finished `.pbix` report is not included.
+
+## Dashboard design
 
 1. Executive marketplace overview
 2. Delivery and fulfillment reliability
