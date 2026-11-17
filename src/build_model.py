@@ -97,7 +97,7 @@ def build_order_fact(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
         - fact["order_estimated_delivery_date"]
     ).dt.total_seconds() / 86_400
     fact["on_time_delivery"] = fact["delivery_variance_days"].le(0)
-    fact.loc[fact["order_delivered_customer_date"].isna(), "on_time_delivery"] = pd.NA
+    fact.loc[\n        fact["order_delivered_customer_date"].isna()\n        | fact["order_estimated_delivery_date"].isna(),\n        "on_time_delivery",\n    ] = pd.NA
     fact["freight_share"] = fact["freight_value"] / fact["product_revenue"].where(
         fact["product_revenue"].ne(0)
     )
