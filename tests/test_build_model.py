@@ -106,3 +106,14 @@ def test_item_fact_preserves_item_grain_and_enriches_dimensions() -> None:
     assert first_item["product_category_name_english"] == "health_beauty"
     assert first_item["seller_state"] == "SP"
     assert first_item["review_score"] == 5
+
+
+def test_missing_estimated_delivery_is_not_counted_as_late() -> None:
+    tables = sample_tables()
+    tables["orders"].loc[0, "order_estimated_delivery_date"] = None
+
+    fact = build_order_fact(tables).set_index("order_id")
+
+    assert pd.isna(fact.loc["order-1", "delivery_variance_days"])
+    assert pd.isna(fact.loc["order-1", "on_time_delivery"])
+    assert pd.isna(fact.loc["order-2", "on_time_delivery"])
